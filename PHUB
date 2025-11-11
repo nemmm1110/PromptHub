@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Manager - Lưu Trữ & Phân Loại</title>
+    <style>
+        /* CSS để định dạng trang */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #007bff;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        /* Phần thêm Prompt */
+        #add-prompt-form {
+            display: grid;
+            gap: 10px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            background-color: #e9f7fe;
+        }
+        #add-prompt-form input[type="text"],
+        #add-prompt-form textarea,
+        #add-prompt-form select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        #add-prompt-form button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #add-prompt-form button:hover {
+            background-color: #0056b3;
+        }
+        
+        /* Phần hiển thị Prompt */
+        .prompt-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 0 10px;
+        }
+        #prompt-list {
+            list-style: none;
+            padding: 0;
+        }
+        .prompt-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .prompt-item h3 {
+            margin-top: 0;
+            color: #28a745;
+        }
+        .prompt-item p {
+            white-space: pre-wrap; /* Giữ định dạng xuống dòng */
+            border-left: 3px solid #ccc;
+            padding-left: 10px;
+            margin: 10px 0;
+            background-color: #f9f9f9;
+        }
+        .prompt-meta {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        .prompt-actions button {
+            margin-left: 10px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .prompt-actions .copy-btn {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .prompt-actions .delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        /* Filter */
+        #filter-category {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>✨ Prompt Manager ✨</h1>
+        
+        <section>
+            <h2>➕ Thêm Prompt Mới</h2>
+            <form id="add-prompt-form">
+                <input type="text" id="prompt-name" placeholder="Tên Prompt (ví dụ: Viết Email Chuyên Nghiệp)" required>
+                
+                <textarea id="prompt-content" rows="4" placeholder="Nội dung Prompt..." required></textarea>
+                
+                <select id="prompt-category">
+                    <option value="Chung">Chung</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Code">Code</option>
+                    <option value="Viết lách">Viết lách</option>
+                    <option value="Ý tưởng">Ý tưởng</option>
+                </select>
+                
+                <button type="submit">Lưu Prompt</button>
+            </form>
+        </section>
+
+        <hr>
+
+        <section>
+            <div class="prompt-list-header">
+                <h2>📚 Danh sách Prompt</h2>
+                <div class="filter-controls">
+                    <label for="filter-category">Lọc theo mục đích:</label>
+                    <select id="filter-category" onchange="displayPrompts()">
+                        <option value="Tất cả">Tất cả</option>
+                        </select>
+                </div>
+            </div>
+            
+            <ul id="prompt-list">
+                </ul>
+        </section>
+    </div>
+
+    <script>
+        // Khai báo biến
+        const form = document.getElementById('add-prompt-form');
+        const promptList = document.getElementById('prompt-list');
+        const filterSelect = document.getElementById('filter-category');
+
+        // Lấy dữ liệu từ Local Storage hoặc khởi tạo mảng rỗng
+        let prompts = JSON.parse(localStorage.getItem('prompts')) || [];
+
+        // --- CHỨC NĂNG LƯU DỮ LIỆU ---
+        function savePrompts() {
+            localStorage.setItem('prompts', JSON.stringify(prompts));
+        }
+
+        // --- CHỨC NĂNG LỌC VÀ HIỂN THỊ CÁC MỤC DANH MỤC (CATEGORY) ---
+        function populateCategories() {
+            // Lấy ra tất cả các danh mục độc nhất
+            const categories = new Set(prompts.map(p => p.category));
+            
+            // Xóa các option cũ (trừ "Tất cả")
+            filterSelect.innerHTML = '<option value="Tất cả">Tất cả</option>';
+            
+            // Thêm các danh mục mới vào dropdown lọc
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                filterSelect.appendChild(option);
+            });
+
+            // Đồng bộ category option trong form
+            const formCategorySelect = document.getElementById('prompt-category');
+            // Lưu giữ các category mặc định để không bị mất khi xóa hết prompt
+            const defaultCategories = ["Chung", "Marketing", "Code", "Viết lách", "Ý tưởng"];
+            
+            // Xóa các option cũ (trừ mặc định)
+            formCategorySelect.innerHTML = ''; 
+            
+            // Gộp và loại bỏ trùng lặp
+            const allCategories = new Set([...defaultCategories, ...categories]);
+
+            allCategories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                formCategorySelect.appendChild(option);
+            });
+        }
+
+        // --- CHỨC NĂNG HIỂN THỊ PROMPT ---
+        function displayPrompts() {
+            promptList.innerHTML = ''; // Xóa danh sách cũ
+            const selectedCategory = filterSelect.value;
+            
+            // Lọc danh sách prompts
+            const filteredPrompts = prompts.filter(p => 
+                selectedCategory === 'Tất cả' || p.category === selectedCategory
+            );
+
+            // Tạo và chèn các item prompt
+            if (filteredPrompts.length === 0) {
+                promptList.innerHTML = '<li style="text-align: center; color: gray;">Chưa có Prompt nào trong mục này.</li>';
+                return;
+            }
+
+            filteredPrompts.forEach((prompt, index) => {
+                const listItem = document.createElement('li');
+                listItem.className = 'prompt-item';
+                // Sử dụng data-index để xác định prompt khi xóa
+                listItem.dataset.id = prompt.id; 
+
+                listItem.innerHTML = `
+                    <h3>${prompt.name}</h3>
+                    <div class="prompt-meta">
+                        Mục đích: <strong>${prompt.category}</strong>
+                    </div>
+                    <p>${prompt.content}</p>
+                    <div class="prompt-actions">
+                        <button class="copy-btn" onclick="copyPromptContent('${prompt.id}')">📋 Sao chép</button>
+                        <button class="delete-btn" onclick="deletePrompt('${prompt.id}')">🗑️ Xóa</button>
+                    </div>
+                `;
+                promptList.appendChild(listItem);
+            });
+            
+            populateCategories(); // Cập nhật lại danh mục sau khi hiển thị/lọc
+        }
+
+        // --- CHỨC NĂNG THÊM PROMPT MỚI ---
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('prompt-name').value;
+            const content = document.getElementById('prompt-content').value;
+            const category = document.getElementById('prompt-category').value;
+            
+            const newPrompt = {
+                id: Date.now().toString(), // ID độc nhất
+                name: name,
+                content: content,
+                category: category
+            };
+
+            prompts.unshift(newPrompt); // Thêm vào đầu danh sách
+            savePrompts();
+            displayPrompts(); // Cập nhật hiển thị
+            form.reset(); // Xóa form
+            alert('Đã thêm Prompt thành công!');
+        });
+
+        // --- CHỨC NĂNG SAO CHÉP PROMPT ---
+        function copyPromptContent(id) {
+            const prompt = prompts.find(p => p.id === id);
+            if (prompt) {
+                navigator.clipboard.writeText(prompt.content)
+                    .then(() => {
+                        alert('Đã sao chép nội dung Prompt vào clipboard!');
+                    })
+                    .catch(err => {
+                        console.error('Lỗi khi sao chép: ', err);
+                        alert('Lỗi! Vui lòng sao chép thủ công.');
+                    });
+            }
+        }
+
+        // --- CHỨC NĂNG XÓA PROMPT ---
+        function deletePrompt(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa Prompt này không?')) {
+                // Lọc bỏ prompt có id tương ứng
+                prompts = prompts.filter(p => p.id !== id);
+                savePrompts();
+                displayPrompts(); // Cập nhật hiển thị
+                alert('Đã xóa Prompt.');
+            }
+        }
+
+        // Khởi tạo trang khi tải
+        displayPrompts(); 
+    </script>
+
+</body>
+</html>
